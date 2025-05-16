@@ -10,3 +10,4 @@ class User(SqlAlchemyBase):
                            primary_key=True, autoincrement=True)
     name = sqlalchemy.Column(sqlalchemy.String, nullable=True)
     recording_time = sqlalchemy.Column(sqlalchemy.String, nullable=True)
+    recording_date = sqlalchemy.Column(sqlalchemy.String, nullable=True)
