@@ -6,14 +6,15 @@ from data import db_session  # Для работы с базой данных
 from data.users import User  # Модель пользователя из базы данных
 
 # Константы с адресом, датами и временем записи
-ADDRESS = 'Школа'
+ADDRESS_LIST = ['Школа №4', 'Школа № 77', 'Кузнечихинская СШ']
+ADDRESS_DICT = {'Школа №4': 'Советская улица, 71', 'Школа № 77': 'ул. Комарова, д. 1а', 'Кузнечихинская СШ': 'д. Кузнечиха, Центральная улица, 34'}
 DATA_LIST = ['01.08.25', '02.08.25', '03.08.25']
 HOURS_LIST_1 = ['9:00', '10:00', '11:00']
 HOURS_LIST_2 = ['12:00', '13:00', '14:00']
 HOURS_LIST_3 = ['15:00', '16:00', '17:00']
 
 # Словарь для хранения временных данных о записи
-rec_inf = {'name': '', 'date': '', 'time': ''}
+rec_inf = {'name': '', 'address': '', 'date': '', 'time': ''}
 
 # Настройка логирования
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.DEBUG)
@@ -44,18 +45,30 @@ async def help_command(update, context):
 # Обрабатывает введенное ФИО и предлагает выбрать дату
 async def name(update, context):
     rec_inf['name'] = update.message.text  # Сохраняем ФИО
+    # Создаем клавиатуру с адресами
+    reply_keyboard = [ADDRESS_LIST]
+    markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True, resize_keyboard=True)
+    await update.message.reply_text("Выберите школу", reply_markup=markup)
+    return 2  # Переход к выбору адреса
+
+
+async def address(update, context):
+    if update.message.text not in ADDRESS_DICT.keys():
+        await update.message.reply_text("Пожалуйста, выберите адрес из предложенных.")
+        return 2  # Выбираем адрес заново
+    rec_inf['address'] = update.message.text  # Сохраняем адрес
     # Создаем клавиатуру с датами
     reply_keyboard = [DATA_LIST]
     markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True, resize_keyboard=True)
     await update.message.reply_text("Выберите удобную дату", reply_markup=markup)
-    return 2  # Переход к выбору даты
+    return 3  # Переход к выбору даты
 
 
 # Обрабатывает выбранную дату и предлагает время
 async def date(update, context):
     if update.message.text not in DATA_LIST:  # Проверка корректности даты
         await update.message.reply_text("Пожалуйста, выберите дату из предложенных.")
-        return 2  # Выбираем дату заново
+        return 3  # Выбираем дату заново
 
     rec_inf['date'] = update.message.text  # Сохраняем дату
 
@@ -71,7 +84,7 @@ async def date(update, context):
     reply_keyboard = [hours_list]
     markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True, resize_keyboard=True)
     await update.message.reply_text("Выберите удобное время", reply_markup=markup)
-    return 3  # Переход к выбору времени
+    return 4  # Переход к выбору времени
 
 
 # Обрабатывает выбранное время и завершает запись
@@ -80,8 +93,14 @@ async def time(update, context):
     # Проверка корректности времени для выбранной даты
     if rec_inf['date'] == DATA_LIST[0] and selected_time not in HOURS_LIST_1:
         await update.message.reply_text("Пожалуйста, выберите время из предложенных.")
-        return 3
+        return 4
     # Проверки для других дат
+    elif rec_inf['date'] == DATA_LIST[1] and selected_time not in HOURS_LIST_2:
+        await update.message.reply_text("Пожалуйста, выберите время из предложенных.")
+        return 4
+    elif rec_inf['date'] == DATA_LIST[2] and selected_time not in HOURS_LIST_3:
+        await update.message.reply_text("Пожалуйста, выберите время из предложенных.")
+        return 4
 
     rec_inf['time'] = selected_time  # Сохраняем время
 
@@ -91,7 +110,8 @@ async def time(update, context):
         f"ФИО: {rec_inf['name']}\n"
         f"Дата: {rec_inf['date']}\n"
         f"Время: {rec_inf['time']}\n"
-        f"Адрес: {ADDRESS}\n\n"
+        f"Школа: {rec_inf['address']}\n"
+        f"Адрес: {ADDRESS_DICT[rec_inf['address']]}\n\n"
         f"Пожалуйста, приходите вовремя. На приём документов отводится 15 минут.",
         reply_markup=ReplyKeyboardRemove()
     )
@@ -129,8 +149,9 @@ def main():
         entry_points=[CommandHandler('start', start)],  # команда /start
         states={
             1: [MessageHandler(filters.TEXT & ~filters.COMMAND, name)],  # Ожидание ФИО
-            2: [MessageHandler(filters.TEXT & ~filters.COMMAND, date)],  # Ожидание даты
-            3: [MessageHandler(filters.TEXT & ~filters.COMMAND, time)]  # Ожидание времени
+            2: [MessageHandler(filters.TEXT & ~filters.COMMAND, address)],  # Ожидание адреса
+            3: [MessageHandler(filters.TEXT & ~filters.COMMAND, date)],  # Ожидание даты
+            4: [MessageHandler(filters.TEXT & ~filters.COMMAND, time)]  # Ожидание времени
         },
         fallbacks=[CommandHandler('stop', stop)]  # Прерывание по команде /stop
     )
